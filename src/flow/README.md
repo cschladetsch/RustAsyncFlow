@@ -142,9 +142,15 @@ classDiagram
     
     class Generator trait
     class GeneratorBase base
-    class Node,Sequence,Barrier container
-    class AsyncCoroutine,SyncCoroutine execution
-    class Timer,PeriodicTimer,Trigger,AsyncFuture timing
+    class Node container
+    class Sequence container
+    class Barrier container
+    class AsyncCoroutine execution
+    class SyncCoroutine execution
+    class Timer timing
+    class PeriodicTimer timing
+    class Trigger timing
+    class AsyncFuture timing
 ```
 
 ## Component Execution Patterns
@@ -184,10 +190,25 @@ flowchart TD
     classDef time fill:#fce4ec
     classDef val fill:#f3e5f5
     
-    class S,C1,C2,C3,SE seq
-    class B,P1,P2,P3,BE par
-    class T,TC,PT,PTC,TR,TRC time
-    class F,W,R val
+    class S seq
+    class C1 seq
+    class C2 seq
+    class C3 seq
+    class SE seq
+    class B par
+    class P1 par
+    class P2 par
+    class P3 par
+    class BE par
+    class T time
+    class TC time
+    class PT time
+    class PTC time
+    class TR time
+    class TRC time
+    class F val
+    class W val
+    class R val
 ```
 
 ## State Management
@@ -264,8 +285,15 @@ graph TB
     classDef container fill:#e8f5e8
     classDef leaf fill:#fff3e0
     
-    class Node,Sequence,Barrier container
-    class AsyncCoroutine,SyncCoroutine,Timer,PeriodicTimer,Trigger,AsyncFuture leaf
+    class Node container
+    class Sequence container
+    class Barrier container
+    class AsyncCoroutine leaf
+    class SyncCoroutine leaf
+    class Timer leaf
+    class PeriodicTimer leaf
+    class Trigger leaf
+    class AsyncFuture leaf
 ```
 
 ## Thread Safety
@@ -301,8 +329,15 @@ graph LR
     classDef state fill:#e1f5fe
     classDef comp fill:#f5f5f5
     
-    class A,B,C,D,E state
-    class F,G,H,I comp
+    class A state
+    class B state
+    class C state
+    class D state
+    class E state
+    class F comp
+    class G comp
+    class H comp
+    class I comp
 ```
 
 ## Usage Examples
