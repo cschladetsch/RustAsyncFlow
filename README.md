@@ -135,10 +135,15 @@ async fn main() -> Result<()> {
 ## Running Examples
 
 ```bash
+# Quick human-readable demo showing all major features
+cargo run --example simple_human_demo
+
+# Individual feature examples
 cargo run --example basic_example
 cargo run --example game_loop_example  
 cargo run --example barrier_example
 cargo run --example future_example
+cargo run --example human_speed_demo  # Comprehensive demo (longer)
 ```
 
 ## Running Tests
