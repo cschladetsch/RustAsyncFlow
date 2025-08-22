@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+import sys
+import subprocess
+import os
+
+def get_available_examples():
+    """Get list of available example files"""
+    examples_dir = "examples"
+    if not os.path.exists(examples_dir):
+        return []
+    
+    examples = []
+    for file in os.listdir(examples_dir):
+        if file.endswith('.rs'):
+            examples.append(file[:-3])  # Remove .rs extension
+    
+    return sorted(examples)
+
+def print_help():
+    """Print help message with available examples"""
+    examples = get_available_examples()
+    
+    print("crne - Cargo Run Example")
+    print("Usage: crne <example_name> [args...]")
+    print("       crne --help")
+    print()
+    print("Available examples:")
+    
+    if examples:
+        for example in examples:
+            print(f"  {example}")
+    else:
+        print("  No examples found in the examples/ directory")
+    
+    print()
+    print("Examples:")
+    print("  crne basic_example")
+    print("  crne game_loop_example --flag value")
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ['--help', '-h', 'help']:
+        print_help()
+        sys.exit(0)
+
+    example_name = sys.argv[1]
+    additional_args = sys.argv[2:]
+
+    cmd = ["cargo", "run", "--example", example_name] + additional_args
+
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
+    except KeyboardInterrupt:
+        sys.exit(130)
+
+if __name__ == "__main__":
+    main()

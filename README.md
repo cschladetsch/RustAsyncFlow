@@ -172,6 +172,20 @@ cargo run --example timed_barrier_demo      # Timed barriers and synchronization
 cargo run --example advanced_timing_demo    # Complex timing patterns
 ```
 
+### Using the `crne` Helper Script
+
+For convenience, you can use the `crne` script to run examples more easily:
+
+```bash
+# Show available examples and help
+./crne --help
+
+# Run examples using the helper script
+./crne simple_human_demo
+./crne basic_example
+./crne game_loop_example --flag value
+```
+
 ## Running Tests
 
 ```bash
