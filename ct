@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+import sys
+import subprocess
+import os
+
+def get_available_tests():
+    """Get list of available test suites and individual tests"""
+    try:
+        # Get list of test files
+        test_suites = []
+        if os.path.exists("tests"):
+            for file in os.listdir("tests"):
+                if file.endswith('.rs'):
+                    test_suites.append(file[:-3])  # Remove .rs extension
+        
+        # Get individual tests by running cargo test -- --list
+        result = subprocess.run(
+            ["cargo", "test", "--", "--list"], 
+            capture_output=True, 
+            text=True,
+            cwd=os.getcwd()
+        )
+        
+        individual_tests = []
+        if result.returncode == 0:
+            lines = result.stdout.split('\n')
+            for line in lines:
+                if ': test' in line:
+                    test_name = line.split(':')[0].strip()
+                    if test_name and not test_name.isdigit():
+                        individual_tests.append(test_name)
+        
+        return sorted(test_suites), sorted(set(individual_tests))
+    except Exception:
+        return [], []
+
+def print_help():
+    """Print help message with available tests"""
+    test_suites, individual_tests = get_available_tests()
+    
+    print("ct - Cargo Test Runner")
+    print("Usage: ct [test_name|test_suite] [cargo_test_args...]")
+    print("       ct --help")
+    print("       ct --list")
+    print()
+    print("Common usage:")
+    print("  ct                           # Run all tests")
+    print("  ct integration_tests         # Run specific test suite")
+    print("  ct test_basic_kernel         # Run specific test")
+    print("  ct --nocapture              # Run tests with output")
+    print("  ct --release                # Run tests in release mode")
+    print("  ct -- --show-output         # Pass args to test runner")
+    print()
+    
+    if test_suites:
+        print("Available test suites:")
+        for suite in test_suites:
+            print(f"  {suite}")
+        print()
+    
+    if individual_tests:
+        print("Individual tests (showing first 20):")
+        for test in individual_tests[:20]:
+            print(f"  {test}")
+        if len(individual_tests) > 20:
+            print(f"  ... and {len(individual_tests) - 20} more tests")
+        print()
+    
+    print("Examples:")
+    print("  ct integration_tests")
+    print("  ct test_barrier_execution")
+    print("  ct --nocapture test_timer")
+    print("  ct --release -- --show-output")
+
+def print_list():
+    """Print all available tests"""
+    test_suites, individual_tests = get_available_tests()
+    
+    if test_suites:
+        print("Test suites:")
+        for suite in test_suites:
+            print(f"  {suite}")
+        print()
+    
+    if individual_tests:
+        print("Individual tests:")
+        for test in individual_tests:
+            print(f"  {test}")
+
+def main():
+    if len(sys.argv) == 1 or sys.argv[1] in ['--help', '-h', 'help']:
+        print_help()
+        sys.exit(0)
+    
+    if sys.argv[1] == '--list':
+        print_list()
+        sys.exit(0)
+
+    # Build cargo test command
+    cmd = ["cargo", "test"]
+    
+    # Add all arguments after the script name
+    cmd.extend(sys.argv[1:])
+
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
+    except KeyboardInterrupt:
+        sys.exit(130)
+
+if __name__ == "__main__":
+    main()

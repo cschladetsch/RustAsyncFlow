@@ -198,6 +198,27 @@ cargo test reliable_timed_tests
 cargo test timed_components_tests
 ```
 
+### Using the `ct` Helper Script
+
+For convenience, you can use the `ct` script to run tests more easily:
+
+```bash
+# Show available tests and help
+./ct --help
+
+# List all available tests
+./ct --list
+
+# Run all tests
+./ct
+
+# Run specific test suite or individual test
+./ct integration_tests
+./ct test_barrier_execution
+./ct --nocapture test_timer
+./ct --release -- --show-output
+```
+
 ## Documentation
 
 For detailed component documentation and advanced usage patterns:
