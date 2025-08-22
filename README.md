@@ -193,6 +193,8 @@ cargo test timed_components_tests
 
 For detailed component documentation and advanced usage patterns:
 
+- [Source Code Structure](src/README.md) - Internal code organization and architecture
+- [Flow Components Documentation](src/flow/README.md) - Detailed flow component implementation
 - [Timed Components Guide](docs/TIMED_COMPONENTS.md) - Comprehensive timing patterns and examples
 
 ## Timed Components
