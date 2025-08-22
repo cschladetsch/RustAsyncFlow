@@ -90,31 +90,28 @@ async fn main() -> Result<()> {
     let root = kernel.root();
     let game_state = GameState::new();
 
-    let start_game_coroutine = FlowFactory::new_async_coroutine_with_name(
-        "StartGame",
+    let start_game_coroutine = Arc::new(AsyncCoroutine::new(
         start_game(game_state.clone())
-    );
+    )).named("StartGame");
 
     let game_loop_condition = {
         let game_state = game_state.clone();
         move || !game_state.is_game_over()
     };
 
-    let player_turn_coroutine = FlowFactory::new_async_coroutine_with_name(
-        "PlayerTurn",
+    let player_turn_coroutine = Arc::new(AsyncCoroutine::new(
         player_turn(game_state.clone())
-    );
+    )).named("PlayerTurn");
 
-    let end_game_coroutine = FlowFactory::new_async_coroutine_with_name(
-        "EndGame",
+    let end_game_coroutine = Arc::new(AsyncCoroutine::new(
         end_game(game_state.clone())
-    );
+    )).named("EndGame");
 
-    let game_sequence = FlowFactory::new_sequence_with_name("GameLoop");
+    let game_sequence = Arc::new(Sequence::new()).named("GameLoop");
     
     game_sequence.add_child(start_game_coroutine).await;
     
-    let while_loop = FlowFactory::new_trigger_with_name("WhileNotGameOver", game_loop_condition);
+    let while_loop = Arc::new(Trigger::new(game_loop_condition)).named("WhileNotGameOver");
     while_loop.set_triggered_callback({
         let player_turn_coroutine = player_turn_coroutine.clone();
         let root = root.clone();

@@ -33,7 +33,7 @@ async fn main() -> Result<()> {
 async fn demo_barrier_with_timed_tasks(root: &Arc<Node>) -> Result<()> {
     println!("--- Demo 1: Barrier with Multiple Timed Tasks ---");
     
-    let barrier = FlowFactory::new_barrier_with_name("Demo1TimedBarrier");
+    let barrier = Arc::new(Barrier::new()).named("Demo1TimedBarrier");
     
     // Create multiple timers with different durations
     let timers_data = vec![
@@ -44,10 +44,8 @@ async fn demo_barrier_with_timed_tasks(root: &Arc<Node>) -> Result<()> {
     ];
     
     for (name, duration_ms) in timers_data {
-        let timer = FlowFactory::new_timer_with_name(
-            name,
-            Duration::from_millis(duration_ms)
-        );
+        let timer = Arc::new(Timer::new(Duration::from_millis(duration_ms)))
+            .named(name);
         
         let timer_name = name.to_string();
         timer.set_elapsed_callback(move || {
@@ -58,17 +56,14 @@ async fn demo_barrier_with_timed_tasks(root: &Arc<Node>) -> Result<()> {
     }
     
     // Create a task that runs after all timers complete
-    let after_barrier = FlowFactory::new_async_coroutine_with_name(
-        "Demo1AfterBarrier",
-        async {
-            println!("  ✓ All timed tasks in barrier completed!");
-            println!("  🎯 Demo 1 finished - barrier synchronized {} timers\n", 4);
-            Ok(())
-        }
-    );
+    let after_barrier = Arc::new(AsyncCoroutine::new(async {
+        println!("  ✓ All timed tasks in barrier completed!");
+        println!("  🎯 Demo 1 finished - barrier synchronized {} timers\n", 4);
+        Ok(())
+    })).named("Demo1AfterBarrier");
     
     // Sequence the barrier and after-task
-    let sequence = FlowFactory::new_sequence_with_name("Demo1Sequence");
+    let sequence = Arc::new(Sequence::new()).named("Demo1Sequence");
     sequence.add_child(barrier).await;
     sequence.add_child(after_barrier).await;
     
@@ -80,7 +75,7 @@ async fn demo_staged_timed_barriers(root: &Arc<Node>) -> Result<()> {
     println!("--- Demo 2: Staged Timed Barriers ---");
     
     // Stage 1: Fast timers (100-300ms)
-    let stage1_barrier = FlowFactory::new_barrier_with_name("Demo2Stage1Barrier");
+    let stage1_barrier = Arc::new(Barrier::new()).named("Demo2Stage1Barrier");
     
     let stage1_timers = vec![
         ("Stage1_Fast1", 100),
@@ -89,10 +84,8 @@ async fn demo_staged_timed_barriers(root: &Arc<Node>) -> Result<()> {
     ];
     
     for (name, duration_ms) in stage1_timers {
-        let timer = FlowFactory::new_timer_with_name(
-            name,
-            Duration::from_millis(duration_ms)
-        );
+        let timer = Arc::new(Timer::new(Duration::from_millis(duration_ms)))
+            .named(name);
         
         let timer_name = name.to_string();
         timer.set_elapsed_callback(move || {
@@ -103,7 +96,7 @@ async fn demo_staged_timed_barriers(root: &Arc<Node>) -> Result<()> {
     }
     
     // Stage 2: Medium timers (400-600ms)
-    let stage2_barrier = FlowFactory::new_barrier_with_name("Demo2Stage2Barrier");
+    let stage2_barrier = Arc::new(Barrier::new()).named("Demo2Stage2Barrier");
     
     let stage2_timers = vec![
         ("Stage2_Med1", 400),
@@ -112,10 +105,8 @@ async fn demo_staged_timed_barriers(root: &Arc<Node>) -> Result<()> {
     ];
     
     for (name, duration_ms) in stage2_timers {
-        let timer = FlowFactory::new_timer_with_name(
-            name,
-            Duration::from_millis(duration_ms)
-        );
+        let timer = Arc::new(Timer::new(Duration::from_millis(duration_ms)))
+            .named(name);
         
         let timer_name = name.to_string();
         timer.set_elapsed_callback(move || {
@@ -126,25 +117,19 @@ async fn demo_staged_timed_barriers(root: &Arc<Node>) -> Result<()> {
     }
     
     // Transition tasks
-    let stage1_complete = FlowFactory::new_async_coroutine_with_name(
-        "Stage1Complete",
-        async {
-            println!("  ✓ Stage 1 barrier completed - all fast timers done!");
-            Ok(())
-        }
-    );
+    let stage1_complete = Arc::new(AsyncCoroutine::new(async {
+        println!("  ✓ Stage 1 barrier completed - all fast timers done!");
+        Ok(())
+    })).named("Stage1Complete");
     
-    let stage2_complete = FlowFactory::new_async_coroutine_with_name(
-        "Stage2Complete",
-        async {
-            println!("  ✓ Stage 2 barrier completed - all medium timers done!");
-            println!("  🎯 Demo 2 finished - staged barriers completed\n");
-            Ok(())
-        }
-    );
+    let stage2_complete = Arc::new(AsyncCoroutine::new(async {
+        println!("  ✓ Stage 2 barrier completed - all medium timers done!");
+        println!("  🎯 Demo 2 finished - staged barriers completed\n");
+        Ok(())
+    })).named("Stage2Complete");
     
     // Create sequence for staged execution
-    let staged_sequence = FlowFactory::new_sequence_with_name("Demo2StagedSequence");
+    let staged_sequence = Arc::new(Sequence::new()).named("Demo2StagedSequence");
     staged_sequence.add_child(stage1_barrier).await;
     staged_sequence.add_child(stage1_complete).await;
     staged_sequence.add_child(stage2_barrier).await;
@@ -157,14 +142,12 @@ async fn demo_staged_timed_barriers(root: &Arc<Node>) -> Result<()> {
 async fn demo_barrier_with_mixed_timers(root: &Arc<Node>) -> Result<()> {
     println!("--- Demo 3: Barrier with Mixed Timer Types ---");
     
-    let mixed_barrier = FlowFactory::new_barrier_with_name("Demo3MixedTimerBarrier");
+    let mixed_barrier = Arc::new(Barrier::new()).named("Demo3MixedTimerBarrier");
     let completion_counter = Arc::new(AtomicU32::new(0));
     
     // Add a regular timer
-    let regular_timer = FlowFactory::new_timer_with_name(
-        "MixedRegularTimer",
-        Duration::from_millis(600)
-    );
+    let regular_timer = Arc::new(Timer::new(Duration::from_millis(600)))
+        .named("MixedRegularTimer");
     
     let counter1 = completion_counter.clone();
     regular_timer.set_elapsed_callback(move || {
@@ -173,10 +156,8 @@ async fn demo_barrier_with_mixed_timers(root: &Arc<Node>) -> Result<()> {
     }).await;
     
     // Add a periodic timer (but we'll let it complete via trigger)
-    let periodic_timer = FlowFactory::new_periodic_timer_with_name(
-        "MixedPeriodicTimer",
-        Duration::from_millis(150)
-    );
+    let periodic_timer = Arc::new(PeriodicTimer::new(Duration::from_millis(150)))
+        .named("MixedPeriodicTimer");
     
     let tick_count = Arc::new(AtomicU32::new(0));
     let counter2 = completion_counter.clone();
@@ -195,13 +176,10 @@ async fn demo_barrier_with_mixed_timers(root: &Arc<Node>) -> Result<()> {
     
     // Add a trigger that waits for external condition
     let condition_met = Arc::new(AtomicBool::new(false));
-    let condition_trigger = FlowFactory::new_trigger_with_name(
-        "MixedConditionTrigger",
-        {
-            let condition_met = condition_met.clone();
-            move || condition_met.load(Ordering::Relaxed)
-        }
-    );
+    let condition_trigger = Arc::new(Trigger::new({
+        let condition_met = condition_met.clone();
+        move || condition_met.load(Ordering::Relaxed)
+    })).named("MixedConditionTrigger");
     
     let counter3 = completion_counter.clone();
     let _condition_met_clone = condition_met.clone();
@@ -211,20 +189,17 @@ async fn demo_barrier_with_mixed_timers(root: &Arc<Node>) -> Result<()> {
     }).await;
     
     // Add an async task that simulates work and sets the condition
-    let condition_setter = FlowFactory::new_async_coroutine_with_name(
-        "MixedConditionSetter",
-        {
-            let condition_met = condition_met.clone();
-            let completion_counter = completion_counter.clone();
-            async move {
-                sleep(Duration::from_millis(450)).await;
-                condition_met.store(true, Ordering::Relaxed);
-                completion_counter.fetch_add(1, Ordering::Relaxed);
-                println!("  🔧 Async task completed (450ms) - condition set!");
-                Ok(())
-            }
+    let condition_setter = Arc::new(AsyncCoroutine::new({
+        let condition_met = condition_met.clone();
+        let completion_counter = completion_counter.clone();
+        async move {
+            sleep(Duration::from_millis(450)).await;
+            condition_met.store(true, Ordering::Relaxed);
+            completion_counter.fetch_add(1, Ordering::Relaxed);
+            println!("  🔧 Async task completed (450ms) - condition set!");
+            Ok(())
         }
-    );
+    })).named("MixedConditionSetter");
     
     // Add all components to the barrier
     mixed_barrier.add_child(regular_timer).await;
@@ -233,16 +208,13 @@ async fn demo_barrier_with_mixed_timers(root: &Arc<Node>) -> Result<()> {
     mixed_barrier.add_child(condition_setter).await;
     
     // Final completion task
-    let mixed_complete = FlowFactory::new_async_coroutine_with_name(
-        "Demo3MixedComplete",
-        async {
-            println!("  ✓ All mixed timer components completed!");
-            println!("  🎯 Demo 3 finished - mixed timer barrier synchronized\n");
-            Ok(())
-        }
-    );
+    let mixed_complete = Arc::new(AsyncCoroutine::new(async {
+        println!("  ✓ All mixed timer components completed!");
+        println!("  🎯 Demo 3 finished - mixed timer barrier synchronized\n");
+        Ok(())
+    })).named("Demo3MixedComplete");
     
-    let mixed_sequence = FlowFactory::new_sequence_with_name("Demo3MixedSequence");
+    let mixed_sequence = Arc::new(Sequence::new()).named("Demo3MixedSequence");
     mixed_sequence.add_child(mixed_barrier).await;
     mixed_sequence.add_child(mixed_complete).await;
     

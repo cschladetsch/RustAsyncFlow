@@ -344,7 +344,7 @@ graph LR
 
 ### Creating a Sequential Flow
 ```rust
-let sequence = FlowFactory::new_sequence_with_name("TaskFlow");
+let sequence = Arc::new(Sequence::new()).named("TaskFlow");
 sequence.add_child(task1).await;
 sequence.add_child(task2).await;
 sequence.add_child(task3).await;
@@ -352,7 +352,7 @@ sequence.add_child(task3).await;
 
 ### Creating a Parallel Flow
 ```rust
-let barrier = FlowFactory::new_barrier_with_name("ParallelTasks");
+let barrier = Arc::new(Barrier::new()).named("ParallelTasks");
 barrier.add_child(concurrent_task1).await;
 barrier.add_child(concurrent_task2).await;
 barrier.add_child(concurrent_task3).await;
@@ -360,10 +360,10 @@ barrier.add_child(concurrent_task3).await;
 
 ### Timed Operations
 ```rust
-let timer = FlowFactory::new_timer_with_name("Delay", Duration::from_secs(5));
+let timer = Arc::new(Timer::new(Duration::from_secs(5))).named("Delay");
 timer.set_elapsed_callback(|| println!("Timer finished!")).await;
 
-let trigger = FlowFactory::new_trigger_with_name("Condition", move || check_condition());
+let trigger = Arc::new(Trigger::new(move || check_condition())).named("Condition");
 trigger.set_trigger_callback(|| println!("Condition met!")).await;
 ```
 
@@ -377,7 +377,7 @@ Each component is designed to be composable, allowing complex execution patterns
 
 ## See Also
 
-- `../factory.rs` - `FlowFactory` methods for creating these components
+- `../factory.rs` - `Named` trait for fluent component naming
 - `../kernel.rs` - `AsyncKernel` that manages component execution
 - `../../examples/` - Usage examples for all components
 - `../../tests/` - Comprehensive test suites for component behavior

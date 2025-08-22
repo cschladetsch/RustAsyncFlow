@@ -33,10 +33,8 @@ async fn demo_timer_with_trigger(root: &Arc<Node>) -> Result<()> {
     println!("--- Demo 1: Basic Timer with Completion Trigger ---");
     
     // Create a timer that runs for 2 seconds
-    let demo_timer = FlowFactory::new_timer_with_name(
-        "Demo1Timer",
-        Duration::from_secs(2)
-    );
+    let demo_timer = Arc::new(Timer::new(Duration::from_secs(2)))
+        .named("Demo1Timer");
     
     let timer_completed = Arc::new(AtomicBool::new(false));
     
@@ -48,13 +46,10 @@ async fn demo_timer_with_trigger(root: &Arc<Node>) -> Result<()> {
     }).await;
     
     // Create trigger that waits for timer completion
-    let completion_trigger = FlowFactory::new_trigger_with_name(
-        "Demo1CompletionTrigger",
-        {
-            let timer_completed = timer_completed.clone();
-            move || timer_completed.load(Ordering::Relaxed)
-        }
-    );
+    let completion_trigger = Arc::new(Trigger::new({
+        let timer_completed = timer_completed.clone();
+        move || timer_completed.load(Ordering::Relaxed)
+    })).named("Demo1CompletionTrigger");
     
     completion_trigger.set_triggered_callback(|| {
         println!("  ✓ Completion trigger fired - Demo 1 finished!\n");
@@ -72,10 +67,8 @@ async fn demo_periodic_timer_with_counter_trigger(root: &Arc<Node>) -> Result<()
     let tick_counter = Arc::new(AtomicU32::new(0));
     
     // Create periodic timer that ticks every 300ms
-    let periodic_timer = FlowFactory::new_periodic_timer_with_name(
-        "Demo2PeriodicTimer",
-        Duration::from_millis(300)
-    );
+    let periodic_timer = Arc::new(PeriodicTimer::new(Duration::from_millis(300)))
+        .named("Demo2PeriodicTimer");
     
     let tick_counter_clone = tick_counter.clone();
     let periodic_timer_clone = periodic_timer.clone();
@@ -88,13 +81,10 @@ async fn demo_periodic_timer_with_counter_trigger(root: &Arc<Node>) -> Result<()
     }).await;
     
     // Create trigger that fires after 4 ticks
-    let counter_trigger = FlowFactory::new_trigger_with_name(
-        "Demo2CounterTrigger",
-        {
-            let tick_counter = tick_counter.clone();
-            move || tick_counter.load(Ordering::Relaxed) >= 4
-        }
-    );
+    let counter_trigger = Arc::new(Trigger::new({
+        let tick_counter = tick_counter.clone();
+        move || tick_counter.load(Ordering::Relaxed) >= 4
+    })).named("Demo2CounterTrigger");
     
     counter_trigger.set_triggered_callback(|| {
         println!("  ✓ Counter trigger fired after 4 ticks - Demo 2 finished!\n");
@@ -113,10 +103,8 @@ async fn demo_multiple_timers_with_conditional_triggers(root: &Arc<Node>) -> Res
     let slow_timer_done = Arc::new(AtomicBool::new(false));
     
     // Fast timer (800ms)
-    let fast_timer = FlowFactory::new_timer_with_name(
-        "Demo3FastTimer",
-        Duration::from_millis(800)
-    );
+    let fast_timer = Arc::new(Timer::new(Duration::from_millis(800)))
+        .named("Demo3FastTimer");
     
     let fast_timer_done_clone = fast_timer_done.clone();
     fast_timer.set_elapsed_callback(move || {
@@ -125,10 +113,8 @@ async fn demo_multiple_timers_with_conditional_triggers(root: &Arc<Node>) -> Res
     }).await;
     
     // Slow timer (1500ms)
-    let slow_timer = FlowFactory::new_timer_with_name(
-        "Demo3SlowTimer",
-        Duration::from_millis(1500)
-    );
+    let slow_timer = Arc::new(Timer::new(Duration::from_millis(1500)))
+        .named("Demo3SlowTimer");
     
     let slow_timer_done_clone = slow_timer_done.clone();
     slow_timer.set_elapsed_callback(move || {
@@ -137,28 +123,22 @@ async fn demo_multiple_timers_with_conditional_triggers(root: &Arc<Node>) -> Res
     }).await;
     
     // Trigger for when fast timer completes first
-    let fast_trigger = FlowFactory::new_trigger_with_name(
-        "Demo3FastTrigger",
-        {
-            let fast_done = fast_timer_done.clone();
-            let slow_done = slow_timer_done.clone();
-            move || fast_done.load(Ordering::Relaxed) && !slow_done.load(Ordering::Relaxed)
-        }
-    );
+    let fast_trigger = Arc::new(Trigger::new({
+        let fast_done = fast_timer_done.clone();
+        let slow_done = slow_timer_done.clone();
+        move || fast_done.load(Ordering::Relaxed) && !slow_done.load(Ordering::Relaxed)
+    })).named("Demo3FastTrigger");
     
     fast_trigger.set_triggered_callback(|| {
         println!("  ⚡ Fast trigger fired - fast timer won the race!");
     }).await;
     
     // Trigger for when both timers complete
-    let both_complete_trigger = FlowFactory::new_trigger_with_name(
-        "Demo3BothCompleteTrigger",
-        {
-            let fast_done = fast_timer_done.clone();
-            let slow_done = slow_timer_done.clone();
-            move || fast_done.load(Ordering::Relaxed) && slow_done.load(Ordering::Relaxed)
-        }
-    );
+    let both_complete_trigger = Arc::new(Trigger::new({
+        let fast_done = fast_timer_done.clone();
+        let slow_done = slow_timer_done.clone();
+        move || fast_done.load(Ordering::Relaxed) && slow_done.load(Ordering::Relaxed)
+    })).named("Demo3BothCompleteTrigger");
     
     both_complete_trigger.set_triggered_callback(|| {
         println!("  ✓ Both timers completed - Demo 3 finished!\n");

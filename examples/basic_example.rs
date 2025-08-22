@@ -12,10 +12,8 @@ async fn main() -> Result<()> {
 
     let counter = Arc::new(AtomicU32::new(0));
     
-    let periodic_timer = FlowFactory::new_periodic_timer_with_name(
-        "HeartbeatTimer", 
-        Duration::from_millis(500)
-    );
+    let periodic_timer = Arc::new(PeriodicTimer::new(Duration::from_millis(500)))
+        .named("HeartbeatTimer");
     
     let counter_clone = counter.clone();
     periodic_timer.set_elapsed_callback(move || {
@@ -23,13 +21,10 @@ async fn main() -> Result<()> {
         println!("Heartbeat #{}", count + 1);
     }).await;
 
-    let completion_trigger = FlowFactory::new_trigger_with_name(
-        "CompletionTrigger",
-        {
-            let counter = counter.clone();
-            move || counter.load(Ordering::Relaxed) >= 5
-        }
-    );
+    let completion_trigger = Arc::new(Trigger::new({
+        let counter = counter.clone();
+        move || counter.load(Ordering::Relaxed) >= 5
+    })).named("CompletionTrigger");
 
     completion_trigger.set_triggered_callback(|| {
         println!("Completion trigger fired! Stopping...");

@@ -16,11 +16,11 @@ async fn test_basic_kernel_operations() {
 
 #[tokio::test]
 async fn test_node_child_management() {
-    let node = FlowFactory::new_node_with_name("TestNode");
+    let node = Arc::new(Node::new()).named("TestNode");
     
     assert_eq!(node.child_count().await, 0);
     
-    let child = FlowFactory::new_node_with_name("Child");
+    let child = Arc::new(Node::new()).named("Child");
     node.add_child(child.clone()).await;
     
     assert_eq!(node.child_count().await, 1);
@@ -31,19 +31,16 @@ async fn test_node_child_management() {
 
 #[tokio::test]
 async fn test_sequence_execution() {
-    let sequence = FlowFactory::new_sequence_with_name("TestSequence");
+    let sequence = Arc::new(Sequence::new()).named("TestSequence");
     let executed_order = Arc::new(tokio::sync::Mutex::new(Vec::<u32>::new()));
     
     for i in 1..=3 {
         let order = executed_order.clone();
-        let task = FlowFactory::new_async_coroutine_with_name(
-            format!("Task{}", i),
-            async move {
-                let mut order = order.lock().await;
-                order.push(i);
-                Ok(())
-            }
-        );
+        let task = Arc::new(AsyncCoroutine::new(async move {
+            let mut order = order.lock().await;
+            order.push(i);
+            Ok(())
+        })).named(format!("Task{}", i));
         sequence.add_child(task).await;
     }
     
@@ -58,20 +55,17 @@ async fn test_sequence_execution() {
 
 #[tokio::test]
 async fn test_barrier_execution() {
-    let barrier = FlowFactory::new_barrier_with_name("TestBarrier");
+    let barrier = Arc::new(Barrier::new()).named("TestBarrier");
     let completed_tasks = Arc::new(AtomicU32::new(0));
     
     for i in 1..=3 {
         let completed = completed_tasks.clone();
         let delay = i * 50; // Different delays to test concurrent execution
-        let task = FlowFactory::new_async_coroutine_with_name(
-            format!("Task{}", i),
-            async move {
-                sleep(Duration::from_millis(delay)).await;
-                completed.fetch_add(1, Ordering::Relaxed);
-                Ok(())
-            }
-        );
+        let task = Arc::new(AsyncCoroutine::new(async move {
+            sleep(Duration::from_millis(delay)).await;
+            completed.fetch_add(1, Ordering::Relaxed);
+            Ok(())
+        })).named(format!("Task{}", i));
         barrier.add_child(task).await;
     }
     
@@ -85,7 +79,7 @@ async fn test_barrier_execution() {
 
 #[tokio::test]
 async fn test_timer_functionality() {
-    let timer = FlowFactory::new_timer_with_name("TestTimer", Duration::from_millis(100));
+    let timer = Arc::new(Timer::new(Duration::from_millis(100))).named("TestTimer");
     let elapsed = Arc::new(AtomicBool::new(false));
     
     timer.set_elapsed_callback({
@@ -106,10 +100,7 @@ async fn test_timer_functionality() {
 
 #[tokio::test]
 async fn test_periodic_timer_functionality() {
-    let timer = FlowFactory::new_periodic_timer_with_name(
-        "TestPeriodicTimer", 
-        Duration::from_millis(50)
-    );
+    let timer = Arc::new(PeriodicTimer::new(Duration::from_millis(50))).named("TestPeriodicTimer");
     let tick_count = Arc::new(AtomicU32::new(0));
     
     timer.set_elapsed_callback({
@@ -133,13 +124,10 @@ async fn test_trigger_functionality() {
     let condition_met = Arc::new(AtomicBool::new(false));
     let trigger_fired = Arc::new(AtomicBool::new(false));
     
-    let trigger = FlowFactory::new_trigger_with_name(
-        "TestTrigger",
-        {
-            let condition_met = condition_met.clone();
-            move || condition_met.load(Ordering::Relaxed)
-        }
-    );
+    let trigger = Arc::new(Trigger::new({
+        let condition_met = condition_met.clone();
+        move || condition_met.load(Ordering::Relaxed)
+    })).named("TestTrigger");
     
     trigger.set_triggered_callback({
         let trigger_fired = trigger_fired.clone();
@@ -165,36 +153,30 @@ async fn test_trigger_functionality() {
 
 #[tokio::test]
 async fn test_future_functionality() {
-    let future = FlowFactory::new_future_with_name::<String>("TestFuture");
+    let future = Arc::new(AsyncFuture::<String>::new()).named("TestFuture");
     let result = Arc::new(tokio::sync::Mutex::new(String::new()));
     
-    let producer = FlowFactory::new_async_coroutine_with_name(
-        "Producer",
-        {
-            let future = future.clone();
-            async move {
-                sleep(Duration::from_millis(100)).await;
-                future.set_value("Hello Future!".to_string()).await;
-                Ok(())
-            }
+    let producer = Arc::new(AsyncCoroutine::new({
+        let future = future.clone();
+        async move {
+            sleep(Duration::from_millis(100)).await;
+            future.set_value("Hello Future!".to_string()).await;
+            Ok(())
         }
-    );
+    })).named("Producer");
     
-    let consumer = FlowFactory::new_async_coroutine_with_name(
-        "Consumer",
-        {
-            let future = future.clone();
-            let result = result.clone();
-            async move {
-                let value = future.wait().await;
-                let mut result = result.lock().await;
-                *result = value;
-                Ok(())
-            }
+    let consumer = Arc::new(AsyncCoroutine::new({
+        let future = future.clone();
+        let result = result.clone();
+        async move {
+            let value = future.wait().await;
+            let mut result = result.lock().await;
+            *result = value;
+            Ok(())
         }
-    );
+    })).named("Consumer");
     
-    let barrier = FlowFactory::new_barrier_with_name("FutureBarrier");
+    let barrier = Arc::new(Barrier::new()).named("FutureBarrier");
     barrier.add_child(producer).await;
     barrier.add_child(consumer).await;
     
@@ -212,23 +194,20 @@ async fn test_kernel_break_functionality() {
     let kernel = AsyncKernel::new();
     let break_triggered = Arc::new(AtomicBool::new(false));
     
-    let long_running_task = FlowFactory::new_async_coroutine_with_name(
-        "LongRunningTask",
-        {
-            let kernel = kernel.clone();
-            let break_triggered = break_triggered.clone();
-            async move {
-                for i in 0..100 {
-                    if i == 5 {
-                        kernel.break_flow().await;
-                        break_triggered.store(true, Ordering::Relaxed);
-                    }
-                    sleep(Duration::from_millis(10)).await;
+    let long_running_task = Arc::new(AsyncCoroutine::new({
+        let kernel = kernel.clone();
+        let break_triggered = break_triggered.clone();
+        async move {
+            for i in 0..100 {
+                if i == 5 {
+                    kernel.break_flow().await;
+                    break_triggered.store(true, Ordering::Relaxed);
                 }
-                Ok(())
+                sleep(Duration::from_millis(10)).await;
             }
+            Ok(())
         }
-    );
+    })).named("LongRunningTask");
     
     kernel.root().add_child(long_running_task).await;
     kernel.run_until_complete().await.unwrap();
@@ -243,68 +222,56 @@ async fn test_complex_flow_composition() {
     let execution_log = Arc::new(tokio::sync::Mutex::new(Vec::<String>::new()));
     
     // Setup phase
-    let setup_sequence = FlowFactory::new_sequence_with_name("Setup");
+    let setup_sequence = Arc::new(Sequence::new()).named("Setup");
     
-    let init_task = FlowFactory::new_async_coroutine_with_name(
-        "Init",
-        {
-            let log = execution_log.clone();
-            async move {
-                let mut log = log.lock().await;
-                log.push("Init".to_string());
-                Ok(())
-            }
+    let init_task = Arc::new(AsyncCoroutine::new({
+        let log = execution_log.clone();
+        async move {
+            let mut log = log.lock().await;
+            log.push("Init".to_string());
+            Ok(())
         }
-    );
+    })).named("Init");
     
-    let config_task = FlowFactory::new_async_coroutine_with_name(
-        "Config",
-        {
-            let log = execution_log.clone();
-            async move {
-                let mut log = log.lock().await;
-                log.push("Config".to_string());
-                Ok(())
-            }
+    let config_task = Arc::new(AsyncCoroutine::new({
+        let log = execution_log.clone();
+        async move {
+            let mut log = log.lock().await;
+            log.push("Config".to_string());
+            Ok(())
         }
-    );
+    })).named("Config");
     
     setup_sequence.add_child(init_task).await;
     setup_sequence.add_child(config_task).await;
     
     // Parallel processing phase
-    let parallel_barrier = FlowFactory::new_barrier_with_name("Parallel");
+    let parallel_barrier = Arc::new(Barrier::new()).named("Parallel");
     
     for i in 1..=3 {
-        let task = FlowFactory::new_async_coroutine_with_name(
-            format!("Parallel{}", i),
-            {
-                let log = execution_log.clone();
-                async move {
-                    let mut log = log.lock().await;
-                    log.push(format!("Parallel{}", i));
-                    Ok(())
-                }
+        let task = Arc::new(AsyncCoroutine::new({
+            let log = execution_log.clone();
+            async move {
+                let mut log = log.lock().await;
+                log.push(format!("Parallel{}", i));
+                Ok(())
             }
-        );
+        })).named(format!("Parallel{}", i));
         parallel_barrier.add_child(task).await;
     }
     
     // Cleanup phase
-    let cleanup_task = FlowFactory::new_async_coroutine_with_name(
-        "Cleanup",
-        {
-            let log = execution_log.clone();
-            async move {
-                let mut log = log.lock().await;
-                log.push("Cleanup".to_string());
-                Ok(())
-            }
+    let cleanup_task = Arc::new(AsyncCoroutine::new({
+        let log = execution_log.clone();
+        async move {
+            let mut log = log.lock().await;
+            log.push("Cleanup".to_string());
+            Ok(())
         }
-    );
+    })).named("Cleanup");
     
     // Main flow
-    let main_sequence = FlowFactory::new_sequence_with_name("Main");
+    let main_sequence = Arc::new(Sequence::new()).named("Main");
     main_sequence.add_child(setup_sequence).await;
     main_sequence.add_child(parallel_barrier).await;
     main_sequence.add_child(cleanup_task).await;

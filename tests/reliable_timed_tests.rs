@@ -11,23 +11,17 @@ async fn test_timer_basic_functionality_simple() {
     
     let callback_fired = Arc::new(AtomicBool::new(false));
     
-    let timer = FlowFactory::new_timer_with_name(
-        "TestTimer",
-        Duration::from_micros(150)
-    );
+    let timer = Arc::new(Timer::new(Duration::from_micros(150))).named("TestTimer");
     
     let callback_fired_clone = callback_fired.clone();
     timer.set_elapsed_callback(move || {
         callback_fired_clone.store(true, Ordering::Relaxed);
     }).await;
     
-    let completion_trigger = FlowFactory::new_trigger_with_name(
-        "CompletionTrigger",
-        {
-            let callback_fired = callback_fired.clone();
-            move || callback_fired.load(Ordering::Relaxed)
-        }
-    );
+    let completion_trigger = Arc::new(Trigger::new({
+        let callback_fired = callback_fired.clone();
+        move || callback_fired.load(Ordering::Relaxed)
+    })).named("CompletionTrigger");
     
     root.add_child(timer).await;
     root.add_child(completion_trigger).await;
@@ -48,10 +42,7 @@ async fn test_periodic_timer_with_manual_completion() {
     
     let tick_count = Arc::new(AtomicU32::new(0));
     
-    let periodic_timer = FlowFactory::new_periodic_timer_with_name(
-        "TestPeriodicTimer",
-        Duration::from_micros(100)
-    );
+    let periodic_timer = Arc::new(PeriodicTimer::new(Duration::from_micros(100))).named("TestPeriodicTimer");
     
     let tick_count_clone = tick_count.clone();
     let timer_for_completion = periodic_timer.clone();
@@ -84,13 +75,10 @@ async fn test_trigger_activation() {
     let condition_met = Arc::new(AtomicBool::new(false));
     let trigger_fired = Arc::new(AtomicBool::new(false));
     
-    let trigger = FlowFactory::new_trigger_with_name(
-        "TestTrigger",
-        {
-            let condition_met = condition_met.clone();
-            move || condition_met.load(Ordering::Relaxed)
-        }
-    );
+    let trigger = Arc::new(Trigger::new({
+        let condition_met = condition_met.clone();
+        move || condition_met.load(Ordering::Relaxed)
+    })).named("TestTrigger");
     
     let trigger_fired_clone = trigger_fired.clone();
     trigger.set_triggered_callback(move || {
@@ -98,17 +86,14 @@ async fn test_trigger_activation() {
     }).await;
     
     // Task that sets the condition after a delay
-    let condition_setter = FlowFactory::new_async_coroutine_with_name(
-        "ConditionSetter",
-        {
-            let condition_met = condition_met.clone();
-            async move {
-                sleep(Duration::from_micros(150)).await;
-                condition_met.store(true, Ordering::Relaxed);
-                Ok(())
-            }
+    let condition_setter = Arc::new(AsyncCoroutine::new({
+        let condition_met = condition_met.clone();
+        async move {
+            sleep(Duration::from_micros(150)).await;
+            condition_met.store(true, Ordering::Relaxed);
+            Ok(())
         }
-    );
+    })).named("ConditionSetter");
     
     root.add_child(trigger).await;
     root.add_child(condition_setter).await;
@@ -123,16 +108,13 @@ async fn test_barrier_with_timers() {
     let kernel = AsyncKernel::new();
     let root = kernel.root();
     
-    let barrier = FlowFactory::new_barrier_with_name("TestBarrier");
+    let barrier = Arc::new(Barrier::new()).named("TestBarrier");
     let completion_count = Arc::new(AtomicU32::new(0));
     
     let durations = vec![150, 250, 200];
     
     for (i, duration_ms) in durations.iter().enumerate() {
-        let timer = FlowFactory::new_timer_with_name(
-            &format!("Timer_{}", i),
-            Duration::from_millis(*duration_ms)
-        );
+        let timer = Arc::new(Timer::new(Duration::from_millis(*duration_ms))).named(&format!("Timer_{}", i));
         
         let completion_count_clone = completion_count.clone();
         timer.set_elapsed_callback(move || {
@@ -142,19 +124,16 @@ async fn test_barrier_with_timers() {
         barrier.add_child(timer).await;
     }
     
-    let after_barrier = FlowFactory::new_async_coroutine_with_name(
-        "AfterBarrier",
-        {
-            let completion_count = completion_count.clone();
-            async move {
-                // Verify all timers completed before this runs
-                assert_eq!(completion_count.load(Ordering::Relaxed), 3);
-                Ok(())
-            }
+    let after_barrier = Arc::new(AsyncCoroutine::new({
+        let completion_count = completion_count.clone();
+        async move {
+            // Verify all timers completed before this runs
+            assert_eq!(completion_count.load(Ordering::Relaxed), 3);
+            Ok(())
         }
-    );
+    })).named("AfterBarrier");
     
-    let sequence = FlowFactory::new_sequence_with_name("TestSequence");
+    let sequence = Arc::new(Sequence::new()).named("TestSequence");
     sequence.add_child(barrier).await;
     sequence.add_child(after_barrier).await;
     
@@ -181,10 +160,7 @@ async fn test_timeout_scenario() {
     let work_completed = Arc::new(AtomicBool::new(false));
     
     // Short timeout (150μs)
-    let timeout_timer = FlowFactory::new_timer_with_name(
-        "TimeoutTimer",
-        Duration::from_micros(150)
-    );
+    let timeout_timer = Arc::new(Timer::new(Duration::from_micros(150))).named("TimeoutTimer");
     
     let timeout_occurred_clone = timeout_occurred.clone();
     timeout_timer.set_elapsed_callback(move || {
@@ -192,27 +168,21 @@ async fn test_timeout_scenario() {
     }).await;
     
     // Long work task (400μs)
-    let work_task = FlowFactory::new_async_coroutine_with_name(
-        "WorkTask",
-        {
-            let work_completed = work_completed.clone();
-            async move {
-                sleep(Duration::from_micros(400)).await;
-                work_completed.store(true, Ordering::Relaxed);
-                Ok(())
-            }
+    let work_task = Arc::new(AsyncCoroutine::new({
+        let work_completed = work_completed.clone();
+        async move {
+            sleep(Duration::from_micros(400)).await;
+            work_completed.store(true, Ordering::Relaxed);
+            Ok(())
         }
-    );
+    })).named("WorkTask");
     
     // Completion trigger (first one to complete wins)
-    let completion_trigger = FlowFactory::new_trigger_with_name(
-        "CompletionTrigger",
-        {
-            let timeout_occurred = timeout_occurred.clone();
-            let work_completed = work_completed.clone();
-            move || timeout_occurred.load(Ordering::Relaxed) || work_completed.load(Ordering::Relaxed)
-        }
-    );
+    let completion_trigger = Arc::new(Trigger::new({
+        let timeout_occurred = timeout_occurred.clone();
+        let work_completed = work_completed.clone();
+        move || timeout_occurred.load(Ordering::Relaxed) || work_completed.load(Ordering::Relaxed)
+    })).named("CompletionTrigger");
     
     root.add_child(timeout_timer).await;
     root.add_child(work_task).await;
@@ -235,14 +205,11 @@ async fn test_sequential_timers_simple() {
     let kernel = AsyncKernel::new();
     let root = kernel.root();
     
-    let sequence = FlowFactory::new_sequence_with_name("TimerSequence");
+    let sequence = Arc::new(Sequence::new()).named("TimerSequence");
     let completion_order = Arc::new(std::sync::Mutex::new(Vec::new()));
     
     for i in 0..3 {
-        let timer = FlowFactory::new_timer_with_name(
-            &format!("SequentialTimer_{}", i),
-            Duration::from_micros(100)
-        );
+        let timer = Arc::new(Timer::new(Duration::from_micros(100))).named(&format!("SequentialTimer_{}", i));
         
         let completion_order_clone = completion_order.clone();
         timer.set_elapsed_callback(move || {
@@ -273,14 +240,11 @@ async fn test_mixed_components_barrier() {
     let kernel = AsyncKernel::new();
     let root = kernel.root();
     
-    let barrier = FlowFactory::new_barrier_with_name("MixedBarrier");
+    let barrier = Arc::new(Barrier::new()).named("MixedBarrier");
     let components_completed = Arc::new(AtomicU32::new(0));
     
     // Timer component
-    let timer = FlowFactory::new_timer_with_name(
-        "MixedTimer",
-        Duration::from_micros(150)
-    );
+    let timer = Arc::new(Timer::new(Duration::from_micros(150))).named("MixedTimer");
     
     let components_completed_clone = components_completed.clone();
     timer.set_elapsed_callback(move || {
@@ -288,27 +252,21 @@ async fn test_mixed_components_barrier() {
     }).await;
     
     // Async task component
-    let async_task = FlowFactory::new_async_coroutine_with_name(
-        "MixedAsyncTask",
-        {
-            let components_completed = components_completed.clone();
-            async move {
-                sleep(Duration::from_micros(120)).await;
-                components_completed.fetch_add(1, Ordering::Relaxed);
-                Ok(())
-            }
+    let async_task = Arc::new(AsyncCoroutine::new({
+        let components_completed = components_completed.clone();
+        async move {
+            sleep(Duration::from_micros(120)).await;
+            components_completed.fetch_add(1, Ordering::Relaxed);
+            Ok(())
         }
-    );
+    })).named("MixedAsyncTask");
     
     // Trigger component
     let condition = Arc::new(AtomicBool::new(false));
-    let trigger = FlowFactory::new_trigger_with_name(
-        "MixedTrigger",
-        {
-            let condition = condition.clone();
-            move || condition.load(Ordering::Relaxed)
-        }
-    );
+    let trigger = Arc::new(Trigger::new({
+        let condition = condition.clone();
+        move || condition.load(Ordering::Relaxed)
+    })).named("MixedTrigger");
     
     let components_completed_clone2 = components_completed.clone();
     trigger.set_triggered_callback(move || {
@@ -316,19 +274,16 @@ async fn test_mixed_components_barrier() {
     }).await;
     
     // Condition setter
-    let condition_setter = FlowFactory::new_async_coroutine_with_name(
-        "ConditionSetter",
-        {
-            let condition = condition.clone();
-            let components_completed = components_completed.clone();
-            async move {
-                sleep(Duration::from_micros(100)).await;
-                condition.store(true, Ordering::Relaxed);
-                components_completed.fetch_add(1, Ordering::Relaxed);
-                Ok(())
-            }
+    let condition_setter = Arc::new(AsyncCoroutine::new({
+        let condition = condition.clone();
+        let components_completed = components_completed.clone();
+        async move {
+            sleep(Duration::from_micros(100)).await;
+            condition.store(true, Ordering::Relaxed);
+            components_completed.fetch_add(1, Ordering::Relaxed);
+            Ok(())
         }
-    );
+    })).named("ConditionSetter");
     
     barrier.add_child(timer).await;
     barrier.add_child(async_task).await;

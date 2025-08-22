@@ -62,6 +62,7 @@ The `AsyncKernel` manages the execution of the flow graph:
 ### Basic Timer Example
 ```rust
 use async_flow::*;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[tokio::main]
@@ -69,10 +70,8 @@ async fn main() -> Result<()> {
     let kernel = AsyncKernel::new();
     let root = kernel.root();
     
-    let timer = FlowFactory::new_periodic_timer_with_name(
-        "Heartbeat", 
-        Duration::from_millis(500)
-    );
+    let timer = Arc::new(PeriodicTimer::new(Duration::from_millis(500)))
+        .named("Heartbeat");
     
     timer.set_elapsed_callback(|| {
         println!("Heartbeat!");
@@ -88,6 +87,8 @@ async fn main() -> Result<()> {
 ### Sequence Example
 ```rust
 use async_flow::*;
+use std::sync::Arc;
+use std::time::Duration;
 
 async fn task(name: &str) -> Result<()> {
     println!("Running task: {}", name);
@@ -99,15 +100,13 @@ async fn task(name: &str) -> Result<()> {
 #[tokio::main] 
 async fn main() -> Result<()> {
     let kernel = AsyncKernel::new();
-    let sequence = FlowFactory::new_sequence_with_name("TaskSequence");
+    let sequence = Arc::new(Sequence::new()).named("TaskSequence");
     
-    sequence.add_child(FlowFactory::new_async_coroutine_with_name(
-        "Task1", task("Alpha")
-    )).await;
+    sequence.add_child(Arc::new(AsyncCoroutine::new(task("Alpha")))
+        .named("Task1")).await;
     
-    sequence.add_child(FlowFactory::new_async_coroutine_with_name(
-        "Task2", task("Beta")  
-    )).await;
+    sequence.add_child(Arc::new(AsyncCoroutine::new(task("Beta")))
+        .named("Task2")).await;
     
     kernel.root().add_child(sequence).await;
     kernel.run_until_complete().await?;
@@ -119,35 +118,31 @@ async fn main() -> Result<()> {
 ### Barrier Example
 ```rust  
 use async_flow::*;
+use std::sync::Arc;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let kernel = AsyncKernel::new();
-    let barrier = FlowFactory::new_barrier_with_name("ParallelTasks");
+    let barrier = Arc::new(Barrier::new()).named("ParallelTasks");
     
     // These tasks run concurrently
     for i in 1..=3 {
-        let task = FlowFactory::new_async_coroutine_with_name(
-            format!("Task{}", i),
-            async move {
-                println!("Starting task {}", i);
-                tokio::time::sleep(Duration::from_millis(i * 100)).await;
-                println!("Finished task {}", i);
-                Ok(())
-            }
-        );
+        let task = Arc::new(AsyncCoroutine::new(async move {
+            println!("Starting task {}", i);
+            tokio::time::sleep(Duration::from_millis(i * 100)).await;
+            println!("Finished task {}", i);
+            Ok(())
+        })).named(format!("Task{}", i));
         barrier.add_child(task).await;
     }
     
-    let after_barrier = FlowFactory::new_async_coroutine_with_name(
-        "Cleanup",
-        async {
-            println!("All parallel tasks completed!");
-            Ok(())
-        }
-    );
+    let after_barrier = Arc::new(AsyncCoroutine::new(async {
+        println!("All parallel tasks completed!");
+        Ok(())
+    })).named("Cleanup");
     
-    let sequence = FlowFactory::new_sequence();
+    let sequence = Arc::new(Sequence::new());
     sequence.add_child(barrier).await;
     sequence.add_child(after_barrier).await;
     
@@ -194,8 +189,14 @@ cargo test timed_components_tests
 For detailed component documentation and advanced usage patterns:
 
 - [Source Code Structure](src/README.md) - Internal code organization and architecture
-- [Flow Components Documentation](src/flow/README.md) - Detailed flow component implementation
+- [Flow Components Documentation](src/flow/README.md) - Detailed flow component implementation with comprehensive Mermaid diagrams
 - [Timed Components Guide](docs/TIMED_COMPONENTS.md) - Comprehensive timing patterns and examples
+
+The [Flow Components Documentation](src/flow/README.md) includes detailed architectural diagrams showing:
+- Component inheritance hierarchy and relationships
+- Execution patterns (sequential, parallel, timing)
+- State management and lifecycle
+- Thread-safe coordination patterns
 
 ## Timed Components
 
@@ -211,21 +212,18 @@ AsyncFlow provides sophisticated timing capabilities through several components 
 ### Quick Example - Timeout Pattern
 
 ```rust
-let timeout_timer = FlowFactory::new_timer_with_name(
-    "Timeout",
-    Duration::from_millis(500)
-);
+let timeout_timer = Arc::new(Timer::new(Duration::from_millis(500)))
+    .named("Timeout");
 
-let work_task = FlowFactory::new_async_coroutine_with_name(
-    "Work",
-    async { /* some work that might take too long */ Ok(()) }
-);
+let work_task = Arc::new(AsyncCoroutine::new(async { 
+    /* some work that might take too long */ 
+    Ok(()) 
+})).named("Work");
 
 // Timer and work race - first to complete wins
-let completion_trigger = FlowFactory::new_trigger_with_name(
-    "FirstComplete",
-    move || timeout_occurred || work_completed
-);
+let completion_trigger = Arc::new(Trigger::new(move || 
+    timeout_occurred || work_completed
+)).named("FirstComplete");
 ```
 
 ### Timed Component Demos

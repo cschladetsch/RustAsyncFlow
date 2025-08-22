@@ -18,10 +18,9 @@ AsyncFlow provides several timing components that can be combined to create soph
 A Timer executes once after a specified duration and then completes.
 
 ```rust
-let timer = FlowFactory::new_timer_with_name(
-    "MyTimer",
-    Duration::from_secs(2)
-);
+use std::sync::Arc;
+
+let timer = Arc::new(Timer::new(Duration::from_secs(2))).named("MyTimer");
 
 timer.set_elapsed_callback(|| {
     println!("Timer elapsed!");
@@ -39,10 +38,9 @@ timer.set_elapsed_callback(|| {
 A PeriodicTimer repeatedly fires at regular intervals until the flow completes.
 
 ```rust
-let periodic = FlowFactory::new_periodic_timer_with_name(
-    "Heartbeat",
-    Duration::from_millis(500)
-);
+use std::sync::Arc;
+
+let periodic = Arc::new(PeriodicTimer::new(Duration::from_millis(500))).named("Heartbeat");
 
 periodic.set_elapsed_callback(|| {
     println!("Heartbeat tick");
@@ -59,14 +57,13 @@ periodic.set_elapsed_callback(|| {
 A Trigger monitors a condition and fires once when the condition becomes true.
 
 ```rust
+use std::sync::Arc;
+
 let counter = Arc::new(AtomicU32::new(0));
-let trigger = FlowFactory::new_trigger_with_name(
-    "CounterTrigger",
-    {
-        let counter = counter.clone();
-        move || counter.load(Ordering::Relaxed) >= 10
-    }
-);
+let trigger = Arc::new(Trigger::new({
+    let counter = counter.clone();
+    move || counter.load(Ordering::Relaxed) >= 10
+})).named("CounterTrigger");
 
 trigger.set_triggered_callback(|| {
     println!("Counter reached 10!");
@@ -87,7 +84,7 @@ Combine timers with triggers for simple timing logic:
 ```rust
 // Timer sets a flag when it completes
 let timer_done = Arc::new(AtomicBool::new(false));
-let timer = FlowFactory::new_timer_with_name("Timer", Duration::from_secs(1));
+let timer = Arc::new(Timer::new(Duration::from_secs(1))).named("Timer");
 
 let timer_done_clone = timer_done.clone();
 timer.set_elapsed_callback(move || {
@@ -95,13 +92,10 @@ timer.set_elapsed_callback(move || {
 }).await;
 
 // Trigger waits for the timer flag
-let completion_trigger = FlowFactory::new_trigger_with_name(
-    "CompletionTrigger",
-    {
-        let timer_done = timer_done.clone();
-        move || timer_done.load(Ordering::Relaxed)
-    }
-);
+let completion_trigger = Arc::new(Trigger::new({
+    let timer_done = timer_done.clone();
+    move || timer_done.load(Ordering::Relaxed)
+})).named("CompletionTrigger");
 ```
 
 ### 2. Timeout Pattern
@@ -113,24 +107,18 @@ let work_completed = Arc::new(AtomicBool::new(false));
 let timeout_occurred = Arc::new(AtomicBool::new(false));
 
 // Work task
-let work_task = FlowFactory::new_async_coroutine_with_name(
-    "WorkTask",
-    {
-        let work_completed = work_completed.clone();
-        async move {
-            // Simulate work
-            sleep(Duration::from_millis(700)).await;
-            work_completed.store(true, Ordering::Relaxed);
-            Ok(())
-        }
+let work_task = Arc::new(AsyncCoroutine::new({
+    let work_completed = work_completed.clone();
+    async move {
+        // Simulate work
+        sleep(Duration::from_millis(700)).await;
+        work_completed.store(true, Ordering::Relaxed);
+        Ok(())
     }
-);
+})).named("WorkTask");
 
 // Timeout timer
-let timeout_timer = FlowFactory::new_timer_with_name(
-    "TimeoutTimer",
-    Duration::from_millis(500)
-);
+let timeout_timer = Arc::new(Timer::new(Duration::from_millis(500))).named("TimeoutTimer");
 
 let timeout_occurred_clone = timeout_occurred.clone();
 timeout_timer.set_elapsed_callback(move || {
@@ -149,10 +137,7 @@ let heartbeat_count = Arc::new(AtomicU32::new(0));
 let system_healthy = Arc::new(AtomicBool::new(true));
 
 // Heartbeat every 200ms
-let heartbeat_timer = FlowFactory::new_periodic_timer_with_name(
-    "Heartbeat",
-    Duration::from_millis(200)
-);
+let heartbeat_timer = Arc::new(PeriodicTimer::new(Duration::from_millis(200))).named("Heartbeat");
 
 let heartbeat_count_clone = heartbeat_count.clone();
 heartbeat_timer.set_elapsed_callback(move || {
@@ -161,10 +146,7 @@ heartbeat_timer.set_elapsed_callback(move || {
 }).await;
 
 // Health monitoring with separate timer
-let health_timer = FlowFactory::new_periodic_timer_with_name(
-    "HealthCheck",
-    Duration::from_millis(600)
-);
+let health_timer = Arc::new(PeriodicTimer::new(Duration::from_millis(600))).named("HealthCheck");
 
 // Stop on unhealthy condition or max heartbeats
 ```
@@ -178,19 +160,13 @@ let stage1_complete = Arc::new(AtomicBool::new(false));
 let stage2_complete = Arc::new(AtomicBool::new(false));
 
 // Stage 1 timer
-let stage1_timer = FlowFactory::new_timer_with_name(
-    "Stage1",
-    Duration::from_millis(300)
-);
+let stage1_timer = Arc::new(Timer::new(Duration::from_millis(300))).named("Stage1");
 
 // Stage 2 starts when Stage 1 completes
-let stage2_trigger = FlowFactory::new_trigger_with_name(
-    "Stage2Start",
-    {
-        let stage1_complete = stage1_complete.clone();
-        move || stage1_complete.load(Ordering::Relaxed)
-    }
-);
+let stage2_trigger = Arc::new(Trigger::new({
+    let stage1_complete = stage1_complete.clone();
+    move || stage1_complete.load(Ordering::Relaxed)
+})).named("Stage2Start");
 
 // Continue the chain...
 ```
@@ -202,7 +178,7 @@ let stage2_trigger = FlowFactory::new_trigger_with_name(
 Use barriers to wait for multiple timers to complete:
 
 ```rust
-let barrier = FlowFactory::new_barrier_with_name("TimedBarrier");
+let barrier = Arc::new(Barrier::new()).named("TimedBarrier");
 
 // Create multiple timers with different durations
 let timers_data = vec![
@@ -212,10 +188,7 @@ let timers_data = vec![
 ];
 
 for (name, duration_ms) in timers_data {
-    let timer = FlowFactory::new_timer_with_name(
-        name,
-        Duration::from_millis(duration_ms)
-    );
+    let timer = Arc::new(Timer::new(Duration::from_millis(duration_ms))).named(name);
     barrier.add_child(timer).await;
 }
 
@@ -228,15 +201,15 @@ Create multi-stage execution with barriers:
 
 ```rust
 // Stage 1: Fast timers (100-300ms)
-let stage1_barrier = FlowFactory::new_barrier_with_name("Stage1");
+let stage1_barrier = Arc::new(Barrier::new()).named("Stage1");
 // Add fast timers...
 
 // Stage 2: Medium timers (400-600ms) 
-let stage2_barrier = FlowFactory::new_barrier_with_name("Stage2");
+let stage2_barrier = Arc::new(Barrier::new()).named("Stage2");
 // Add medium timers...
 
 // Sequence the stages
-let sequence = FlowFactory::new_sequence_with_name("StagedSequence");
+let sequence = Arc::new(Sequence::new()).named("StagedSequence");
 sequence.add_child(stage1_barrier).await;
 sequence.add_child(stage2_barrier).await;
 ```
@@ -246,19 +219,19 @@ sequence.add_child(stage2_barrier).await;
 Combine different component types in barriers:
 
 ```rust
-let mixed_barrier = FlowFactory::new_barrier_with_name("MixedBarrier");
+let mixed_barrier = Arc::new(Barrier::new()).named("MixedBarrier");
 
 // Regular timer
-let timer = FlowFactory::new_timer_with_name("Timer", Duration::from_millis(600));
+let timer = Arc::new(Timer::new(Duration::from_millis(600))).named("Timer");
 
 // Periodic timer (controlled by external logic)
-let periodic = FlowFactory::new_periodic_timer_with_name("Periodic", Duration::from_millis(150));
+let periodic = Arc::new(PeriodicTimer::new(Duration::from_millis(150))).named("Periodic");
 
 // Trigger waiting for condition
-let trigger = FlowFactory::new_trigger_with_name("Trigger", || condition_check());
+let trigger = Arc::new(Trigger::new(|| condition_check())).named("Trigger");
 
 // Async task
-let task = FlowFactory::new_async_coroutine_with_name("Task", async { /* work */ Ok(()) });
+let task = Arc::new(AsyncCoroutine::new(async { /* work */ Ok(()) })).named("Task");
 
 // All must complete for barrier to finish
 mixed_barrier.add_child(timer).await;
@@ -275,16 +248,15 @@ Create complex timing orchestrations with dynamic barriers:
 
 ```rust
 // Wave 1: Initial timers
-let wave1_barrier = FlowFactory::new_barrier_with_name("Wave1");
+let wave1_barrier = Arc::new(Barrier::new()).named("Wave1");
 // Add wave1 timers...
 
 // Wave 2: Triggered by Wave 1 completion
-let wave2_trigger = FlowFactory::new_trigger_with_name(
-    "Wave2Start",
+let wave2_trigger = Arc::new(Trigger::new(
     move || wave1_complete.load(Ordering::Relaxed)
-);
+)).named("Wave2Start");
 
-let wave2_barrier = FlowFactory::new_barrier_with_name("Wave2");
+let wave2_barrier = Arc::new(Barrier::new()).named("Wave2");
 // Add wave2 timers...
 
 // Sequence waves for orchestrated execution
@@ -298,13 +270,10 @@ Use triggers to create conditional timing behaviors:
 let condition = Arc::new(AtomicBool::new(false));
 
 // Timer only starts when condition is met
-let conditional_trigger = FlowFactory::new_trigger_with_name(
-    "ConditionalStart",
-    {
-        let condition = condition.clone();
-        move || condition.load(Ordering::Relaxed)
-    }
-);
+let conditional_trigger = Arc::new(Trigger::new({
+    let condition = condition.clone();
+    move || condition.load(Ordering::Relaxed)
+})).named("ConditionalStart");
 
 // Timer begins after trigger fires
 ```

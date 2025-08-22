@@ -8,7 +8,7 @@ This directory contains the core implementation of the AsyncFlow library, a thre
 
 - **`lib.rs`** - Main library entry point with public API exports
 - **`kernel.rs`** - `AsyncKernel` implementation for managing flow execution
-- **`factory.rs`** - `FlowFactory` for creating flow components
+- **`factory.rs`** - `Named` trait for fluent component naming
 - **`time_frame.rs`** - Time management and tracking utilities
 - **`logger.rs`** - Logging infrastructure for flow debugging
 
@@ -85,15 +85,15 @@ graph TB
     Generator --> Trigger[Trigger<br/>trigger.rs]
     Generator --> AsyncFuture[AsyncFuture<br/>future.rs]
     
-    FlowFactory[FlowFactory<br/>factory.rs] -.-> Node
-    FlowFactory -.-> Sequence
-    FlowFactory -.-> Barrier
-    FlowFactory -.-> AsyncCoroutine
-    FlowFactory -.-> SyncCoroutine
-    FlowFactory -.-> Timer
-    FlowFactory -.-> PeriodicTimer
-    FlowFactory -.-> Trigger
-    FlowFactory -.-> AsyncFuture
+    Named[Named Trait<br/>factory.rs] -.-> Node
+    Named -.-> Sequence
+    Named -.-> Barrier
+    Named -.-> AsyncCoroutine
+    Named -.-> SyncCoroutine
+    Named -.-> Timer
+    Named -.-> PeriodicTimer
+    Named -.-> Trigger
+    Named -.-> AsyncFuture
     
     TimeFrame[TimeFrame<br/>time_frame.rs] -.-> AsyncKernel
     Logger[Logger<br/>logger.rs] -.-> AsyncKernel
@@ -106,7 +106,7 @@ graph TB
     classDef utility fill:#f5f5f5
     
     class Generator trait
-    class AsyncKernel,FlowFactory,TimeFrame,Logger core
+    class AsyncKernel,Named,TimeFrame,Logger core
     class Node,Sequence,Barrier container
     class AsyncCoroutine,SyncCoroutine execution
     class Timer,PeriodicTimer,Trigger,AsyncFuture timing
@@ -117,14 +117,14 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant User
-    participant Factory as FlowFactory
+    participant Arc as Arc::new
     participant Kernel as AsyncKernel
     participant Root as Root Node
     participant Component as Flow Component
     participant TimeFrame
     
-    User->>Factory: create_component()
-    Factory-->>User: Arc<dyn Generator>
+    User->>Arc: new(Component::new()).named("name")
+    Arc-->>User: Arc<dyn Generator>
     
     User->>Kernel: new()
     Kernel->>Root: create root node
@@ -208,11 +208,13 @@ The codebase follows a hierarchical component model where all flow components im
 
 ## Usage Patterns
 
-Components are typically created through `FlowFactory` methods and managed by the kernel:
+Components are typically created using direct constructors with fluent naming:
 
 ```rust
+use std::sync::Arc;
+
 let kernel = AsyncKernel::new();
-let sequence = FlowFactory::new_sequence_with_name("MySequence");
+let sequence = Arc::new(Sequence::new()).named("MySequence");
 sequence.add_child(some_coroutine).await;
 kernel.root().add_child(sequence).await;
 kernel.run_until_complete().await?;
