@@ -25,19 +25,19 @@ classDiagram
     class Generator {
         <<trait>>
         +id() Uuid
-        +name() Option~String~
+        +name() Option String
         +is_active() bool
         +is_running() bool
         +is_completed() bool
-        +step() async Result~()~
+        +step() async Result
         +complete() async
         +activate() async
     }
     
     class GeneratorBase {
         -id: Uuid
-        -name: Option~String~
-        -state: Arc~RwLock~GeneratorState~~
+        -name: Option String
+        -state: Arc RwLock GeneratorState
         +new(name) Self
         +set_state(GeneratorState) async
         +get_state() async GeneratorState
@@ -45,44 +45,44 @@ classDiagram
     
     class Node {
         -base: GeneratorBase
-        -children: Arc~RwLock~Vec~Arc~dyn Generator~~~~
-        +add_child(Arc~dyn Generator~) async
+        -children: Arc RwLock Vec Children
+        +add_child(Generator) async
         +remove_child(Uuid) async bool
         +clear_completed() async
     }
     
     class Sequence {
         -base: GeneratorBase
-        -children: Arc~RwLock~Vec~Arc~dyn Generator~~~~
-        -current_index: Arc~RwLock~usize~~
-        +add_child(Arc~dyn Generator~) async
-        +get_current_child() async Option~Arc~dyn Generator~~
+        -children: Arc RwLock Vec Children
+        -current_index: Arc RwLock usize
+        +add_child(Generator) async
+        +get_current_child() async Option Generator
     }
     
     class Barrier {
         -base: GeneratorBase
-        -children: Arc~RwLock~Vec~Arc~dyn Generator~~~~
-        +add_child(Arc~dyn Generator~) async
+        -children: Arc RwLock Vec Children
+        +add_child(Generator) async
         +all_children_completed() async bool
     }
     
     class AsyncCoroutine {
         -base: GeneratorBase
-        -handle: Arc~Mutex~Option~JoinHandle~Result~()~~~~~
+        -handle: Arc Mutex JoinHandle
         +new(name, future) Self
     }
     
     class SyncCoroutine {
         -base: GeneratorBase
-        -step_func: Arc~Mutex~StepFunction~~
+        -step_func: Arc Mutex StepFunction
         +new(name, step_func) Self
     }
     
     class Timer {
         -base: GeneratorBase
         -duration: Duration
-        -start_time: Arc~RwLock~Option~Instant~~~
-        -callback: Arc~RwLock~Option~Callback~~~
+        -start_time: Arc RwLock Option Instant
+        -callback: Arc RwLock Option Callback
         +new(name, duration) Self
         +set_elapsed_callback(callback) async
     }
@@ -90,25 +90,25 @@ classDiagram
     class PeriodicTimer {
         -base: GeneratorBase
         -interval: Duration
-        -last_tick: Arc~RwLock~Instant~~
-        -callback: Arc~RwLock~Option~Callback~~~
+        -last_tick: Arc RwLock Instant
+        -callback: Arc RwLock Option Callback
         +new(name, interval) Self
         +set_elapsed_callback(callback) async
     }
     
     class Trigger {
         -base: GeneratorBase
-        -condition: Arc~RwLock~Option~ConditionFn~~~
-        -callback: Arc~RwLock~Option~Callback~~~
-        -was_triggered: Arc~RwLock~bool~~
+        -condition: Arc RwLock Option ConditionFn
+        -callback: Arc RwLock Option Callback
+        -was_triggered: Arc RwLock bool
         +new(name, condition) Self
         +set_trigger_callback(callback) async
     }
     
-    class AsyncFuture~T~ {
+    class AsyncFuture {
         -base: GeneratorBase
-        -inner: Arc~RwLock~Option~T~~~
-        -notify: Arc~Notify~
+        -inner: Arc RwLock Option T
+        -notify: Arc Notify
         +new(name) Self
         +set_value(value) async
         +wait() async T
