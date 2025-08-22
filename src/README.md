@@ -1,4 +1,4 @@
-# /AsyncFlow Source Code Structure
+# AsyncFlow Source Code Structure
 
 This directory contains the core implementation of the AsyncFlow library, a thread-free async/await-based flow control system for Rust.
 
