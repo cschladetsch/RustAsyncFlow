@@ -4,7 +4,7 @@ A thread-free, async/await-based flow control system for Rust, inspired by Cshar
 
 ## Demo
 
-![Demo](resources/demo.gif Demo)
+![Demo](resources/Demo.gif Demo)
 
 ## Features
 
