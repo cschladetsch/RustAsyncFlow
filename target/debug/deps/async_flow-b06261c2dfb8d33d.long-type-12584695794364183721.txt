@@ -1,0 +1,5 @@
+(dyn futures::Future<Output = std::result::Result<(), Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>> + std::marker::Send + 'static)
+Unique<(dyn futures::Future<Output = std::result::Result<(), Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>> + std::marker::Send + 'static)>
+Box<(dyn futures::Future<Output = std::result::Result<(), Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>> + std::marker::Send + 'static)>
+Pin<Box<(dyn futures::Future<Output = std::result::Result<(), Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>> + std::marker::Send + 'static)>>
+Option<Pin<Box<(dyn futures::Future<Output = std::result::Result<(), Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>> + std::marker::Send + 'static)>>>

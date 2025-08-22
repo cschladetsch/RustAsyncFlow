@@ -1,6 +1,6 @@
 # AsyncFlow
 
-A thread-free, async/await-based flow control system for Rust, inspired by CsharpFlow. This library provides coroutine-like functionality using Rust's native async/await instead of traditional threading.
+A thread-free, async/await-based flow control system for Rust, inspired by CsharpFlow. This library provides coroutine-like functionality using Rust's native async/await for cooperative multitasking.
 
 ## Features
 
@@ -151,10 +151,10 @@ cargo test
 
 | Feature | CsharpFlow | AsyncFlow |
 |---------|------------|-----------|
-| Concurrency | Threads | async/await |
-| Memory Model | GC + locking | Ownership + Arc/Mutex |
+| Language | C# | Rust |
+| Memory Model | GC + locking | Ownership + Arc/RwLock |
 | Coroutines | IEnumerator | async functions |
-| Performance | Thread overhead | Zero-cost async |
+| Performance | Managed runtime | Zero-cost async |
 | Safety | Runtime errors | Compile-time safety |
 
 ## Architecture
@@ -166,4 +166,214 @@ AsyncFlow uses a hierarchical structure where:
 - Async coordination happens through Rust's async runtime
 - No threads are created - everything runs on the tokio executor
 
-This provides the same flow control capabilities as CsharpFlow while leveraging Rust's zero-cost async abstractions and memory safety guarantees.# AsyncRustFlow
+### System Architecture
+
+```mermaid
+graph TB
+    K[AsyncKernel] --> R[Root Node]
+    R --> S1[Sequence]
+    R --> B1[Barrier] 
+    R --> T1[Timer]
+    
+    S1 --> C1[AsyncCoroutine]
+    S1 --> C2[AsyncCoroutine]
+    S1 --> C3[AsyncCoroutine]
+    
+    B1 --> P1[AsyncCoroutine]
+    B1 --> P2[AsyncCoroutine]
+    B1 --> P3[AsyncCoroutine]
+    
+    T1 --> CB1[Callback]
+    
+    K --> TF[TimeFrame]
+    K --> BF[Break Flag]
+    K --> WU[Wait Until]
+    
+    subgraph "Tokio Runtime"
+        direction TB
+        JH1[JoinHandle]
+        JH2[JoinHandle] 
+        JH3[JoinHandle]
+        JH4[JoinHandle]
+        JH5[JoinHandle]
+        JH6[JoinHandle]
+    end
+    
+    C1 -.-> JH1
+    C2 -.-> JH2
+    C3 -.-> JH3
+    P1 -.-> JH4
+    P2 -.-> JH5
+    P3 -.-> JH6
+```
+
+### Component Relationships
+
+```mermaid
+classDiagram
+    class Generator {
+        <<trait>>
+        +id() Uuid
+        +name() Option~String~
+        +is_active() bool
+        +is_running() bool
+        +is_completed() bool
+        +step() async Result
+    }
+    
+    class AsyncKernel {
+        -base: GeneratorBase
+        -root: Arc~Node~
+        -time_frame: Arc~RwLock~TimeFrame~~
+        -break_flag: Arc~RwLock~bool~~
+        +run_until_complete() async Result
+        +run_for(Duration) async Result
+        +break_flow() async
+    }
+    
+    class Node {
+        -base: GeneratorBase
+        -children: Arc~RwLock~Vec~Arc~Generator~~~~
+        +add_child(Arc~Generator~) async
+        +remove_child(Uuid) async bool
+        +clear_completed() async
+    }
+    
+    class Sequence {
+        -base: GeneratorBase
+        -children: Arc~RwLock~Vec~Arc~Generator~~~~
+        -current_index: Arc~RwLock~usize~~
+        +add_child(Arc~Generator~) async
+    }
+    
+    class Barrier {
+        -base: GeneratorBase
+        -children: Arc~RwLock~Vec~Arc~Generator~~~~
+        +add_child(Arc~Generator~) async
+    }
+    
+    class AsyncCoroutine {
+        -base: GeneratorBase
+        -handle: Arc~Mutex~JoinHandle~Result~~~~
+    }
+    
+    class Timer {
+        -base: GeneratorBase
+        -duration: Duration
+        -start_time: Arc~RwLock~Instant~~
+        -callback: Arc~RwLock~Callback~~
+    }
+    
+    class Trigger {
+        -base: GeneratorBase
+        -condition: Arc~RwLock~Condition~~
+        -callback: Arc~RwLock~Callback~~
+    }
+    
+    class AsyncFuture~T~ {
+        -base: GeneratorBase
+        -inner: Arc~RwLock~Option~T~~~
+        -notify: Arc~Notify~
+        +set_value(T) async
+        +wait() async T
+    }
+    
+    Generator <|.. AsyncKernel
+    Generator <|.. Node
+    Generator <|.. Sequence
+    Generator <|.. Barrier
+    Generator <|.. AsyncCoroutine
+    Generator <|.. Timer
+    Generator <|.. Trigger
+    Generator <|.. AsyncFuture
+    
+    AsyncKernel --> Node : contains root
+    Node --> Generator : contains children
+    Sequence --> Generator : executes sequentially
+    Barrier --> Generator : waits for all
+```
+
+### Flow Execution Model
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Kernel as AsyncKernel
+    participant Root as Root Node
+    participant Seq as Sequence
+    participant C1 as Coroutine1
+    participant C2 as Coroutine2
+    participant JH as JoinHandle
+    
+    User->>Kernel: run_until_complete()
+    
+    loop Until Complete
+        Kernel->>Kernel: update_time()
+        Kernel->>Root: step()
+        Root->>Seq: step()
+        
+        alt Sequential Execution
+            Seq->>C1: step()
+            C1->>JH: check if finished
+            alt Finished
+                JH-->>C1: completed
+                C1->>C1: complete()
+                Seq->>C2: step()
+            end
+        end
+        
+        Kernel->>Root: clear_completed()
+        Root->>Root: remove completed children
+        
+        alt All Complete
+            Kernel-->>User: Ok(())
+        else Continue
+            Kernel->>Kernel: sleep(1ms)
+        end
+    end
+```
+
+### Thread-Free Coordination
+
+```mermaid
+graph LR
+    subgraph "Single Tokio Executor"
+        direction TB
+        
+        subgraph "AsyncKernel Loop"
+            A[Update Time] --> B[Step Root]
+            B --> C[Clear Completed]
+            C --> D[Check Break]
+            D --> E[Sleep 1ms]
+            E --> A
+        end
+        
+        subgraph "Async Tasks"
+            T1[Task 1<br/>JoinHandle]
+            T2[Task 2<br/>JoinHandle] 
+            T3[Task 3<br/>JoinHandle]
+        end
+        
+        subgraph "Coordination Primitives"
+            RW1[RwLock<br/>Children]
+            RW2[RwLock<br/>State]
+            AT1[AtomicBool<br/>Flags]
+            N1[Notify<br/>Futures]
+        end
+    end
+    
+    B --> RW1
+    T1 -.-> RW2
+    T2 -.-> AT1
+    T3 -.-> N1
+    
+    classDef kernel fill:#e1f5fe
+    classDef task fill:#f3e5f5
+    classDef coord fill:#e8f5e8
+    
+    class A,B,C,D,E kernel
+    class T1,T2,T3 task
+    class RW1,RW2,AT1,N1 coord
+```
+
+This provides the same flow control capabilities as CsharpFlow while leveraging Rust's zero-cost async abstractions and memory safety guarantees.
