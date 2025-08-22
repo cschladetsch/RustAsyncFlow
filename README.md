@@ -2,6 +2,28 @@
 
 A thread-free, async/await-based flow control system for Rust, inspired by CsharpFlow. This library provides coroutine-like functionality using Rust's native async/await for cooperative multitasking.
 
+## Table of Contents
+
+- [Demo](#demo)
+- [Features](#features)
+- [Core Components](#core-components)
+  - [Generators](#generators)  
+  - [Kernel](#kernel)
+- [Examples](#examples)
+  - [Basic Timer Example](#basic-timer-example)
+  - [Sequence Example](#sequence-example)
+  - [Barrier Example](#barrier-example)
+- [Running Examples](#running-examples)
+- [Running Tests](#running-tests)
+- [Documentation](#documentation)
+- [Timed Components](#timed-components)
+- [Comparison with CsharpFlow](#comparison-with-csharpflow)
+- [Architecture](#architecture)
+  - [System Architecture](#system-architecture)
+  - [Component Relationships](#component-relationships)
+  - [Flow Execution Model](#flow-execution-model)
+  - [Thread-Free Coordination](#thread-free-coordination)
+
 ## Demo
 
 ![Demo](resources/Demo.gif)
@@ -147,14 +169,72 @@ cargo run --example basic_example
 cargo run --example game_loop_example  
 cargo run --example barrier_example
 cargo run --example future_example
-cargo run --example human_speed_demo  # Comprehensive demo (longer)
+cargo run --example human_speed_demo  # Comprehensive demo (slower-paced)
+
+# Timed component demos
+cargo run --example timed_trigger_demo      # Timer + Trigger combinations
+cargo run --example timed_barrier_demo      # Timed barriers and synchronization
+cargo run --example advanced_timing_demo    # Complex timing patterns
 ```
 
 ## Running Tests
 
 ```bash
+# Run all tests
 cargo test
+
+# Run specific test suites
+cargo test integration_tests
+cargo test reliable_timed_tests
+cargo test timed_components_tests
 ```
+
+## Documentation
+
+For detailed component documentation and advanced usage patterns:
+
+- [Timed Components Guide](docs/TIMED_COMPONENTS.md) - Comprehensive timing patterns and examples
+
+## Timed Components
+
+AsyncFlow provides sophisticated timing capabilities through several components that can be combined to create complex timing behaviors:
+
+### Available Timed Components
+
+- **Timer**: One-shot timer with configurable duration and callback
+- **PeriodicTimer**: Repeating timer that fires at regular intervals
+- **Trigger**: Condition-based component that activates when criteria are met
+- **Barrier**: Synchronization component for coordinating multiple timed tasks
+
+### Quick Example - Timeout Pattern
+
+```rust
+let timeout_timer = FlowFactory::new_timer_with_name(
+    "Timeout",
+    Duration::from_millis(500)
+);
+
+let work_task = FlowFactory::new_async_coroutine_with_name(
+    "Work",
+    async { /* some work that might take too long */ Ok(()) }
+);
+
+// Timer and work race - first to complete wins
+let completion_trigger = FlowFactory::new_trigger_with_name(
+    "FirstComplete",
+    move || timeout_occurred || work_completed
+);
+```
+
+### Timed Component Demos
+
+Run the timed component examples to see sophisticated patterns:
+
+- `timed_trigger_demo` - Basic and advanced timer/trigger combinations
+- `timed_barrier_demo` - Parallel timed tasks with barrier synchronization  
+- `advanced_timing_demo` - Complex patterns like cascading timers and orchestration
+
+See the [Timed Components Guide](docs/TIMED_COMPONENTS.md) for comprehensive documentation and patterns.
 
 ## Comparison with CsharpFlow
 

@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -37,7 +36,7 @@ impl AsyncCoroutine {
     }
 
     async fn is_handle_finished(&self) -> bool {
-        let mut handle_lock = self.handle.lock().await;
+        let handle_lock = self.handle.lock().await;
         if let Some(ref handle) = *handle_lock {
             handle.is_finished()
         } else {

@@ -14,3 +14,16 @@ uuid = { version = "1.0", features = ["v4"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
+rand = "0.8"
+
+[[example]]
+name = "timed_trigger_demo"
+path = "examples/timed_trigger_demo.rs"
+
+[[example]]
+name = "timed_barrier_demo"  
+path = "examples/timed_barrier_demo.rs"
+
+[[example]]
+name = "advanced_timing_demo"
+path = "examples/advanced_timing_demo.rs"

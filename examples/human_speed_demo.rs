@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
         "UploadDocument",
         async {
             println!("📄 Uploading document...");
-            sleep(Duration::from_secs(2)).await;
+            sleep(Duration::from_secs(4)).await;
             println!("✅ Document uploaded successfully");
             Ok(())
         }
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
         "ScanDocument", 
         async {
             println!("🔍 Scanning document for viruses...");
-            sleep(Duration::from_millis(1500)).await;
+            sleep(Duration::from_secs(3)).await;
             println!("✅ Document is clean");
             Ok(())
         }
@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
         "ProcessDocument",
         async {
             println!("⚙️  Processing document content...");
-            sleep(Duration::from_secs(2)).await;
+            sleep(Duration::from_secs(4)).await;
             println!("✅ Document processed and indexed");
             Ok(())
         }
@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
         "DownloadFile1",
         async {
             println!("📥 Downloading file1.pdf...");
-            sleep(Duration::from_millis(2500)).await;
+            sleep(Duration::from_secs(5)).await;
             println!("✅ file1.pdf downloaded (2.5MB)");
             Ok(())
         }
@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
         "DownloadFile2", 
         async {
             println!("📥 Downloading file2.docx...");
-            sleep(Duration::from_secs(2)).await;
+            sleep(Duration::from_secs(4)).await;
             println!("✅ file2.docx downloaded (1.8MB)");
             Ok(())
         }
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
         "DownloadFile3",
         async {
             println!("📥 Downloading file3.xlsx...");
-            sleep(Duration::from_millis(1800)).await;
+            sleep(Duration::from_secs(4)).await;
             println!("✅ file3.xlsx downloaded (3.2MB)");
             Ok(())
         }
@@ -107,7 +107,7 @@ async fn main() -> Result<()> {
         "CompressFiles",
         async {
             println!("🗜️  Compressing all files into archive...");
-            sleep(Duration::from_millis(1500)).await;
+            sleep(Duration::from_secs(3)).await;
             println!("✅ Archive created: documents.zip (4.1MB)");
             Ok(())
         }
@@ -134,7 +134,7 @@ async fn main() -> Result<()> {
     
     let progress_timer = FlowFactory::new_periodic_timer_with_name(
         "ProgressUpdater",
-        Duration::from_millis(800)
+        Duration::from_secs(2)
     );
     
     progress_timer.set_elapsed_callback({
@@ -169,7 +169,7 @@ async fn main() -> Result<()> {
         "BackgroundWork",
         async {
             println!("🔧 Starting background processing...");
-            sleep(Duration::from_secs(8)).await;
+            sleep(Duration::from_secs(20)).await;
             Ok(())
         }
     );
@@ -199,7 +199,7 @@ async fn main() -> Result<()> {
             let config_future = config_future.clone();
             async move {
                 println!("⚙️  Loading configuration from server...");
-                sleep(Duration::from_millis(1200)).await;
+                sleep(Duration::from_secs(3)).await;
                 config_future.set_value("production-config-v2.1".to_string()).await;
                 println!("✅ Configuration loaded");
                 Ok(())
@@ -213,7 +213,7 @@ async fn main() -> Result<()> {
             let auth_future = auth_future.clone();
             async move {
                 println!("🔐 Authenticating with service...");
-                sleep(Duration::from_millis(1800)).await;
+                sleep(Duration::from_secs(4)).await;
                 auth_future.set_value(12345678).await;
                 println!("✅ Authentication successful");
                 Ok(())
@@ -236,7 +236,7 @@ async fn main() -> Result<()> {
                 println!("🎫 Received auth token: {}", token);
                 
                 println!("🚀 Starting main service with config and auth...");
-                sleep(Duration::from_millis(1000)).await;
+                sleep(Duration::from_secs(2)).await;
                 println!("✅ Main service is now running!");
                 
                 Ok(())

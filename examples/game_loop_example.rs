@@ -41,6 +41,7 @@ impl GameState {
         self.player_ready.store(ready, Ordering::Relaxed);
     }
 
+    #[allow(dead_code)]
     fn is_player_ready(&self) -> bool {
         self.player_ready.load(Ordering::Relaxed)
     }
