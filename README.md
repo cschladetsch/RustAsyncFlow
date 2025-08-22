@@ -2,6 +2,10 @@
 
 A thread-free, async/await-based flow control system for Rust, inspired by CsharpFlow. This library provides coroutine-like functionality using Rust's native async/await for cooperative multitasking.
 
+## Demo
+
+![Demo](resources/demo.gif)
+
 ## Features
 
 - **Thread-free**: Uses async/await and tokio for concurrency without threads
