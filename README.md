@@ -153,7 +153,46 @@ async fn main() -> Result<()> {
 }
 ```
 
+## Helper Scripts
+
+This project includes two convenient helper scripts for running examples and tests:
+
+### `crne` - Cargo Run Example Script
+Cross-platform Python script for running examples easily:
+
+```bash
+# Show all available examples with help
+./crne --help
+
+# Run examples (equivalent to cargo run --example)
+./crne simple_human_demo
+./crne basic_example
+./crne game_loop_example --flag value
+```
+
+### `ct` - Cargo Test Script  
+Cross-platform Python script for running tests easily:
+
+```bash
+# Show all available tests with help
+./ct --help
+
+# List all test suites and individual tests
+./ct --list
+
+# Run all tests
+./ct
+
+# Run specific test suite or individual test
+./ct integration_tests
+./ct test_barrier_execution
+./ct --nocapture test_timer
+./ct --release -- --show-output
+```
+
 ## Running Examples
+
+### Manual Method (using cargo directly)
 
 ```bash
 # Quick human-readable demo showing all major features
@@ -172,21 +211,12 @@ cargo run --example timed_barrier_demo      # Timed barriers and synchronization
 cargo run --example advanced_timing_demo    # Complex timing patterns
 ```
 
-### Using the `crne` Helper Script
-
-For convenience, you can use the `crne` script to run examples more easily:
-
-```bash
-# Show available examples and help
-./crne --help
-
-# Run examples using the helper script
-./crne simple_human_demo
-./crne basic_example
-./crne game_loop_example --flag value
-```
+### Using Helper Script
+**Quick and easy:** `./crne simple_human_demo` or `./crne --help` to see all available examples
 
 ## Running Tests
+
+### Manual Method (using cargo directly)
 
 ```bash
 # Run all tests
@@ -198,26 +228,8 @@ cargo test reliable_timed_tests
 cargo test timed_components_tests
 ```
 
-### Using the `ct` Helper Script
-
-For convenience, you can use the `ct` script to run tests more easily:
-
-```bash
-# Show available tests and help
-./ct --help
-
-# List all available tests
-./ct --list
-
-# Run all tests
-./ct
-
-# Run specific test suite or individual test
-./ct integration_tests
-./ct test_barrier_execution
-./ct --nocapture test_timer
-./ct --release -- --show-output
-```
+### Using Helper Script
+**Quick and easy:** `./ct` to run all tests, `./ct integration_tests` for specific tests, or `./ct --help` for all options
 
 ## Documentation
 
